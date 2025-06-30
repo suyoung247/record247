@@ -4,17 +4,18 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { auth } from '@/libs/firebase';
+import { firebaseAuth } from '@/libs/firebase';
 
 export async function googleSignIn() {
   const provider = new GoogleAuthProvider();
-  return await signInWithPopup(auth, provider);
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return await signInWithPopup(firebaseAuth, provider);
 }
 
 export async function logout() {
-  return await signOut(auth);
+  return await signOut(firebaseAuth);
 }
 
 export function observeAuthState(callback) {
-  return onAuthStateChanged(auth, callback);
+  return onAuthStateChanged(firebaseAuth, callback);
 }
