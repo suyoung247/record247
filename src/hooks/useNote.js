@@ -7,12 +7,12 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
+  updateDoc,
 } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
-const FIVE_MINUTES = 1000 * 60 * 5;
-const THIRTY_MINUTES = 1000 * 60 * 30;
-const USERS_COLLECTION = 'users';
+const FIVE_MINUTES = 1000 * 60 * 30;
+const THIRTY_MINUTES = 1000 * 60 * 60 * 6;
 
 export function useNote(uid) {
   return useQuery({
@@ -21,7 +21,7 @@ export function useNote(uid) {
     queryFn: async () => {
       if (!uid) throw new Error('사용자 정보가 없습니다');
       const snapshot = await getDocs(
-        collection(firestoreDatabase, `${USERS_COLLECTION}/${uid}/notes`)
+        collection(firestoreDatabase, `users/${uid}/notes`)
       );
       return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     },
@@ -34,15 +34,12 @@ export function useAddNote(uid) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (content) => {
+    mutationFn: async (noteData) => {
       if (!uid) throw new Error('로그인 후 시도해주세요.');
-      await addDoc(
-        collection(firestoreDatabase, `${USERS_COLLECTION}/${uid}/notes`),
-        {
-          content,
-          createdAt: serverTimestamp(),
-        }
-      );
+      await addDoc(collection(firestoreDatabase, `users/${uid}/notes`), {
+        ...noteData,
+        createdAt: serverTimestamp(),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['notes', uid]);
@@ -61,9 +58,7 @@ export function useDeleteNote(uid) {
   return useMutation({
     mutationFn: async (id) => {
       if (!uid) throw new Error('로그인 후 시도해주세요.');
-      await deleteDoc(
-        doc(firestoreDatabase, `${USERS_COLLECTION}/${uid}/notes/${id}`)
-      );
+      await deleteDoc(doc(firestoreDatabase, `users/${uid}/notes/${id}`));
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['notes', uid]);
@@ -72,6 +67,38 @@ export function useDeleteNote(uid) {
     onError: (error) => {
       console.error(error);
       toast.error('메모 삭제 실패');
+    },
+  });
+}
+
+export function useUpdateNote(uid) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, memo }) => {
+      const ref = doc(firestoreDatabase, `users/${uid}/notes/${id}`);
+      await updateDoc(ref, { memo });
+    },
+
+    onMutate: async ({ id, memo }) => {
+      await queryClient.cancelQueries(['notes', uid]);
+
+      const previousNotes = queryClient.getQueryData(['notes', uid]);
+
+      queryClient.setQueryData(['notes', uid], (old) =>
+        old.map((n) => (n.id === id ? { ...n, memo } : n))
+      );
+
+      return { previousNotes };
+    },
+
+    onError: (context) => {
+      queryClient.setQueryData(['notes', uid], context.previousNotes);
+      toast.error('메모 수정에 실패했습니다.');
+    },
+
+    onSettled: () => {
+      queryClient.invalidateQueries(['notes', uid]);
     },
   });
 }
