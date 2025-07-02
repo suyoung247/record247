@@ -8,12 +8,14 @@ import NotFound from '@/pages/NotFound';
 import { useAuth } from '@/hooks/useAuth';
 
 const Router = () => {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
 
   const protectedPaths = ['/intro', '/viewer', '/notes', '/review'];
-  const isGuestAccessBlocked = !user && protectedPaths.includes(location.pathname);
+  const isGuestAccessBlocked =
+    !user && protectedPaths.includes(location.pathname);
 
+  if (isLoading) return null;
   if (isGuestAccessBlocked) {
     return <Navigate to="/" replace />;
   }
