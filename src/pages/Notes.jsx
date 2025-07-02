@@ -1,34 +1,35 @@
-import { useNote, useAddNote, useDeleteNote } from '@/hooks/useNote';
+import ReadingNote from '@/components/readingNote/ReadingNote';
+import NoteModal from '@/components/readingNote/NoteModal';
+import { useAddNote } from '@/hooks/useNote';
 import { useAuth } from '@/hooks/useAuth';
 
 const Notes = () => {
   const { user } = useAuth();
-  const { data: notes, isLoading } = useNote(user?.uid);
   const addNote = useAddNote(user?.uid);
-  const deleteNote = useDeleteNote(user?.uid);
 
-  if (isLoading) return <div>Notes Page</div>;
-
-  const handleAddNote = () => {
-    addNote.mutate('세 메모 내용');
-  };
-
-  const handleDeletNote = (id) => {
-    deleteNote.mutate(id);
+  const handleTestAdd = () => {
+    const dummyNote = {
+      text: '이건 테스트용 메모입니다.',
+      memo: '✅ 삭제/수정 테스트용 메모',
+      type: 'note',
+      page: 42,
+      color: '#facc15',
+    };
+    addNote.mutate(dummyNote);
   };
 
   return (
-    <div>
-      <h1>Notes Page</h1>
-      <button onClick={handleAddNote}>매모 추가</button>
-      <ul>
-        {notes?.map((note) => (
-          <li key={note.id}>
-            {note.content}
-            <button onClick={() => handleDeletNote(note.id)}>삭제</button>
-          </li>
-        ))}
-      </ul>
+    <div className="p-4">
+      <h1 className="text-xl font-bold mb-4">📓 독서노트</h1>
+      <button
+        onClick={handleTestAdd}
+        className="mb-4 px-3 py-1 bg-green-600 text-white rounded"
+      >
+        테스트 메모 추가
+      </button>
+
+      <ReadingNote />
+      <NoteModal />
     </div>
   );
 };
