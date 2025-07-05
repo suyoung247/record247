@@ -1,5 +1,11 @@
+import EpubReaderWrapper from '@/components/epubViewer/EpubReaderWrapper';
+
 const Viewer = () => {
-  return <div>Viewer Page</div>;
+  return (
+    <div className="w-full h-screen">
+      <EpubReaderWrapper />
+    </div>
+  );
 };
 
 export default Viewer;
