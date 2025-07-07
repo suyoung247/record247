@@ -1,36 +1,23 @@
-import { useState, useRef, useEffect } from 'react';
-import { ReactReader } from 'react-reader';
-import useBookStore from '@/store/useBookStore';
+import { useState, useEffect } from 'react';
+import CustomEpubViewer from '@/components/epubViewer/CustomEpubViewer';
 
-const EpubReaderWrapper = () => {
-  const { getCurrentBook } = useBookStore();
-  const currentBook = getCurrentBook();
-
-  const [location, setLocation] = useState(null);
-  const renditionRef = useRef(null);
-
-  const handleLocationChange = (epubCfi) => {
-    setLocation(epubCfi);
-    localStorage.setItem(`cfi_${currentBook?.bookId}`, epubCfi);
-  };
+const EpubReaderWrapper = ({ book }) => {
+  const [blobData, setBlobData] = useState(null);
 
   useEffect(() => {
-    if (currentBook?.bookId) {
-      const savedCfi = localStorage.getItem(`cfi_${currentBook.bookId}`);
-      if (savedCfi) setLocation(savedCfi);
-    }
-  }, [currentBook?.bookId]);
+    const fetchBook = async () => {
+      const res = await fetch(book.bookUrl);
+      const blob = await res.blob();
+      setBlobData(blob);
+    };
+    fetchBook();
+  }, [book.bookUrl]);
 
-  if (!currentBook?.bookUrl) return <p>📭 EPUB 파일이 없습니다.</p>;
+  if (!blobData) return <p>📭 EPUB 불러오는 중...</p>;
 
   return (
-    <div style={{ height: '100vh' }}>
-      <ReactReader
-        url={currentBook.bookUrl}
-        location={location}
-        locationChanged={handleLocationChange}
-        getRendition={(rendition) => (renditionRef.current = rendition)}
-      />
+    <div className="w-full h-full">
+      <CustomEpubViewer blob={blobData} bookId={book.bookId} />
     </div>
   );
 };
