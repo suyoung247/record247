@@ -2,32 +2,38 @@ import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isValidEpubFile } from '@/utils/epubUtils';
 import useBookStore from '@/store/useBookStore';
+import { useAuth } from '@/hooks/useAuth';
 import { uploadEpubToServer } from '@/utils/epubUploader';
 
 const UploadBox = () => {
   const inputRef = useRef();
   const navigate = useNavigate();
   const addBook = useBookStore((state) => state.addBook);
+  const { user } = useAuth();
+
   const handleFile = async (file) => {
-    if (!file) return;
+    if (!file || !user) return;
 
-    const isValid = await isValidEpubFile(file);
-
-    if (!isValid) {
+    const isFrontendValid = await isValidEpubFile(file);
+    if (!isFrontendValid) {
       return;
     }
-    let bookUrl = await uploadEpubToServer(file);
 
-    if (!bookUrl) {
-      bookUrl = URL.createObjectURL(file);
+    const serverUploadResult = await uploadEpubToServer(file, user.uid);
+
+    if (!serverUploadResult.success || !serverUploadResult.url) {
+      return;
     }
 
     const bookTitle = file.name.replace('.epub', '');
-    const bookId = bookTitle.toLowerCase().replace(/\s/g, '-');
+    const bookId = `${user.uid}-${Date.now()}`;
+    const bookUrl = serverUploadResult.url;
     const createdAt = Date.now();
 
-    addBook({ bookId, bookTitle, bookUrl, createdAt });
+    const newBook = { bookId, bookTitle, bookUrl, createdAt };
+    addBook(newBook);
 
+    localStorage.setItem('books', JSON.stringify([newBook]));
     navigate('/viewer');
   };
 

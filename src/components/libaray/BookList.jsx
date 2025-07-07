@@ -2,11 +2,11 @@ import useBookStore from '@/store/useBookStore';
 import { useNavigate } from 'react-router-dom';
 
 const BookList = () => {
-  const { books, setCurrentBook } = useBookStore();
+  const { books, setCurrentBookId } = useBookStore();
   const navigate = useNavigate();
 
   const handleSelect = (bookId) => {
-    setCurrentBook(bookId);
+    setCurrentBookId(bookId);
     navigate('/viewer');
   };
 

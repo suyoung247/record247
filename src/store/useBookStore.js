@@ -1,58 +1,51 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-const useBookStore = create((set, get) => ({
-  books: [],
-  bookMap: {},
-  currentBookId: null,
+const useBookStore = create(
+  persist(
+    (set, get) => ({
+      books: [],
+      bookMap: {},
+      currentBookId: null,
 
-  setBooks: (newBooks) => {
-    const bookMap = {};
-    newBooks.forEach((book) => {
-      bookMap[book.bookId] = book;
-    });
+      setBooks: (newBooks) => {
+        const bookMap = {};
+        newBooks.forEach((book) => {
+          bookMap[book.bookId] = book;
+        });
 
-    localStorage.setItem('books', JSON.stringify(newBooks));
-    localStorage.setItem('bookMap', JSON.stringify(bookMap));
+        set({ books: newBooks, bookMap });
+      },
 
-    set({ books: newBooks, bookMap });
-  },
+      addBook: (book) => {
+        const { books, bookMap } = get();
+        const newBooks = [...books, book];
+        const newBookMap = { ...bookMap, [book.bookId]: book };
 
-  addBook: (book) => {
-    const { books } = get();
-    const newBooks = [...books, book];
+        set({
+          books: newBooks,
+          bookMap: newBookMap,
+          currentBookId: book.bookId,
+        });
+      },
 
-    const newBookMap = {
-      ...get().bookMap,
-      [book.bookId]: book,
-    };
+      setCurrentBookId: (bookId) => {
+        set({ currentBookId: bookId });
+      },
 
-    localStorage.setItem('books', JSON.stringify(newBooks));
-    localStorage.setItem('bookMap', JSON.stringify(newBookMap));
-    localStorage.setItem('currentBookId', book.bookId);
+      getCurrentBook: () => {
+        const { bookMap, currentBookId } = get();
+        return bookMap[currentBookId] || null;
+      },
 
-    set({
-      books: newBooks,
-      bookMap: newBookMap,
-      currentBookId: book.bookId,
-    });
-  },
-
-  setCurrentBookId: (bookId) => {
-    localStorage.setItem('currentBookId', bookId);
-    set({ currentBookId: bookId });
-  },
-
-  getCurrentBook: () => {
-    const { bookMap, currentBookId } = get();
-    return bookMap[currentBookId] || null;
-  },
-
-  resetBooks: () => {
-    localStorage.removeItem('books');
-    localStorage.removeItem('bookMap');
-    localStorage.removeItem('currentBookId');
-    set({ books: [], bookMap: {}, currentBookId: null });
-  },
-}));
+      resetBooks: () => {
+        set({ books: [], bookMap: {}, currentBookId: null });
+      },
+    }),
+    {
+      name: 'book-store',
+    }
+  )
+);
 
 export default useBookStore;
