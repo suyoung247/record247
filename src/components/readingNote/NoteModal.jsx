@@ -1,41 +1,85 @@
-import useStore from '@/store/useStore';
-import { useDeleteNote } from '@/hooks/useNote';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 
-export default function NoteModal() {
-  const { user } = useAuth();
-  const deleteNote = useDeleteNote(user?.uid);
+const NoteModal = ({
+  visible,
+  onClose,
+  onSave,
+  highlightInfo = {},
+  position,
+}) => {
+  const [memo, setMemo] = useState('');
+  const [charCount, setCharCount] = useState(0);
 
-  const { isNoteModalOpen, selectedNote } = useStore();
+  useEffect(() => {
+    setMemo(highlightInfo.memo || '');
+    setCharCount((highlightInfo.memo || '').length);
+  }, [highlightInfo]);
 
-  if (!isNoteModalOpen || !selectedNote) return null;
+  if (!visible || !position) return null;
 
-  const handleDelete = () => {
-    if (!selectedNote?.id) return;
-    deleteNote.mutate(selectedNote.id);
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setMemo(val);
+    setCharCount(val.length);
+  };
+
+  const handleSave = () => {
+    if (onSave) onSave(memo);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow w-[400px]">
-        <h2 className="text-xl font-bold mb-2">📌 하이라이트 / 메모</h2>
-        <p className="text-gray-700">{selectedNote.text}</p>
-        {selectedNote.memo && (
-          <p className="text-yellow-700 bg-yellow-50 mt-2 p-2 rounded hover:bg-gray-200">
-            ✍️ {selectedNote.memo}
-          </p>
-        )}
-        <p className="text-sm text-gray-400 mt-2">{selectedNote.page} 페이지</p>
-
-        <div className="mt-4 flex justify-end space-x-2">
+    <div
+      className="absolute z-50"
+      style={{
+        top: `${position.top + 40}px`,
+        left: `${position.left}px`,
+        transform: 'translate(-50%, 0)',
+      }}
+    >
+      <div className="bg-white rounded-xl shadow-lg w-[480px] p-6 relative">
+        <div className="flex justify-between items-center mb-4">
+          <span className="text-sm text-gray-500 font-medium">
+            메모 ({charCount} / 500)
+          </span>
           <button
-            onClick={handleDelete}
-            className="px-4 py-1 bg-red-500 text-white rounded"
+            onClick={handleSave}
+            className="text-sm bg-yellow-400 hover:bg-yellow-300 text-black font-semibold px-4 py-1 rounded"
           >
-            삭제
+            저장
           </button>
         </div>
+
+        <div className="flex items-start space-x-2 mb-4">
+          <div
+            className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
+            style={{ backgroundColor: highlightInfo.color || '#facc15' }}
+          ></div>
+          <p className="text-sm text-gray-800 whitespace-pre-wrap">
+            {highlightInfo.text || '선택된 문장이 없습니다.'}
+          </p>
+        </div>
+
+        <div className="bg-gray-100 rounded-md p-3 min-h-[100px]">
+          <textarea
+            className="w-full bg-transparent resize-none outline-none text-sm text-gray-800 placeholder-gray-400"
+            rows={4}
+            maxLength={500}
+            placeholder="메모를 입력해주세요..."
+            value={memo}
+            onChange={handleChange}
+          />
+        </div>
+
+        {highlightInfo.createdAt &&
+          !isNaN(new Date(highlightInfo.createdAt)) && (
+            <p className="text-xs text-gray-400 mt-2 text-right">
+              {format(new Date(highlightInfo.createdAt), 'yyyy.MM.dd')}
+            </p>
+          )}
       </div>
     </div>
   );
-}
+};
+
+export default NoteModal;
