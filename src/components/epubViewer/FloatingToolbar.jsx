@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSaveHighlight } from '@/utils/saveHighlight';
 import { useDeleteHighlight } from '@/hooks/useHighlightSync';
+import { useHighlightStore } from '@/store/useHighlightStore';
 import useStore from '@/store/useStore';
 
 const COLORS = ['#facc15', '#86efac', '#a5b4fc', '#fda4af', '#f87171'];
 
-const FloatingToolbar = ({ rendition }) => {
+const FloatingToolbar = ({ rendition, onHighlightClick }) => {
   const {
     toolbarState,
     setToolbarState,
@@ -20,6 +21,7 @@ const FloatingToolbar = ({ rendition }) => {
   const { user } = useAuth();
   const { saveHighlight } = useSaveHighlight(rendition);
   const deleteHighlightMutation = useDeleteHighlight(user?.uid);
+  const { getHighlightById } = useHighlightStore.getState();
 
   const ref = useRef(null);
 
@@ -39,10 +41,12 @@ const FloatingToolbar = ({ rendition }) => {
     try {
       setHighlightColor(color);
       await saveHighlight({
+        id: toolbarState.highlightId,
         cfi: toolbarState.cfi,
         text: selectedText,
         color,
         memo: null,
+        onClick: onHighlightClick,
       });
       setActiveHighlightId(null);
       clearSelectedText();
@@ -54,7 +58,11 @@ const FloatingToolbar = ({ rendition }) => {
   };
 
   const handleMemoClick = () => {
-    const highlight = {
+    const existing = toolbarState.highlightId
+      ? getHighlightById(toolbarState.highlightId)
+      : null;
+
+    const highlight = existing ?? {
       id: toolbarState.highlightId ?? null,
       cfi: toolbarState.cfi,
       text: selectedText || '',
