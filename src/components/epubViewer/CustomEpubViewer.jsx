@@ -9,6 +9,11 @@ import { useAuth } from '@/hooks/useAuth';
 import NoteModal from '@/components/readingNote/NoteModal';
 import { useSaveHighlight } from '@/utils/saveHighlight';
 import { useUpdateHighlight } from '@/hooks/useHighlightSync';
+import { useAutoHighlightSync } from '@/hooks/useAutoHighlightSync';
+import { useHighlightStore } from '@/store/useHighlightStore';
+import { cleanupHighlights } from '@/utils/cleanupHighlights';
+import { getHighlightDiff } from '@/utils/getHighlightDiff';
+import { getToolbarPositionFromCfi } from '@/utils/getToolbarPositionFromCfi';
 
 const CustomEpubViewer = ({ blob, bookId }) => {
   const viewerRef = useRef(null);
@@ -29,6 +34,27 @@ const CustomEpubViewer = ({ blob, bookId }) => {
     toolbarState,
   } = useStore();
 
+  const handleHighlightClick = async (highlight) => {
+    const position = await getToolbarPositionFromCfi({
+      rendition: renditionRef.current,
+      cfi: highlight.cfi,
+      viewerRef,
+    });
+
+    if (!position) return;
+
+    setToolbarState({
+      ...position,
+      cfi: highlight.cfi,
+      highlightId: highlight.id,
+      mode: null,
+      type: 'click',
+    });
+    setSelectedText(highlight.text);
+  };
+
+  useAutoHighlightSync(user?.uid);
+
   useEffect(() => {
     const init = async () => {
       if (!blob || !viewerRef.current) return;
@@ -48,27 +74,39 @@ const CustomEpubViewer = ({ blob, bookId }) => {
 
       await book.ready;
 
-      function handleHighlightClick(highlight) {
-        setToolbarState({
-          top: 100,
-          left: 100,
-          cfi: highlight.cfi,
-          highlightId: highlight.id,
-          mode: null,
-          type: 'click',
-        });
-        setSelectedText(highlight.text);
-      }
-
       if (user?.uid) {
         try {
-          const highlights = await fetchUserHighlights(user.uid);
-          for (const h of highlights) {
-            if (!h.cfi) continue;
-            await applyHighlight(rendition, h, handleHighlightClick);
+          const serverHighlights = await fetchUserHighlights(user.uid);
+          const localHighlights = useHighlightStore.getState().highlights;
+
+          const { added, updated, removed } = getHighlightDiff(
+            serverHighlights,
+            localHighlights
+          );
+
+          const store = useHighlightStore.getState();
+
+          removed.forEach(({ id }) => {
+            store.removeHighlight(id);
+          });
+
+          updated.forEach((highlight) => {
+            store.updateHighlight(highlight.id, highlight);
+          });
+
+          added.forEach((highlight) => {
+            store.addHighlight(highlight);
+          });
+
+          const syncedHighlights = useHighlightStore.getState().highlights;
+          for (const highlight of syncedHighlights) {
+            if (!highlight.cfi) continue;
+            await applyHighlight(rendition, highlight, handleHighlightClick);
           }
+
+          await cleanupHighlights(user.uid);
         } catch (error) {
-          console.error('❌ 하이라이트 불러오기 실패:', error);
+          console.error('❌ 하이라이트 fetch 실패:', error);
         }
       }
 
@@ -87,11 +125,9 @@ const CustomEpubViewer = ({ blob, bookId }) => {
           if (!doc) return;
 
           const win = content.window;
-
-          doc.addEventListener('mouseup', async () => {
+          doc.addEventListener('mouseup', () => {
             const selection = win.getSelection();
             const selectedText = selection.toString().trim();
-
             if (!selectedText) {
               clearSelectedText();
               setToolbarState(null);
@@ -132,7 +168,10 @@ const CustomEpubViewer = ({ blob, bookId }) => {
       ref={viewerRef}
       style={{ width: '100%', height: '100%', position: 'relative' }}
     >
-      <FloatingToolbar rendition={renditionRef.current} />
+      <FloatingToolbar
+        rendition={renditionRef.current}
+        onHighlightClick={handleHighlightClick}
+      />
       {isNoteModalOpen &&
         selectedHighlight &&
         toolbarState?.mode === 'note' && (
@@ -149,11 +188,15 @@ const CustomEpubViewer = ({ blob, bookId }) => {
                 saveHighlight({
                   ...selectedHighlight,
                   memo,
+                  onClick: handleHighlightClick,
                 });
               } else {
                 updateMemo.mutate({
                   id: selectedHighlight.id,
-                  update: { memo },
+                  update: {
+                    memo,
+                    synced: false,
+                  },
                 });
               }
 

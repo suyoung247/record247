@@ -53,9 +53,26 @@ export const useHighlightStore = create(
         }));
       },
 
-      setHighlights: (highlightList) => {
-        set({ highlights: highlightList });
+      setHighlights: (incomingList) => {
+        set((state) => {
+          const existingMap = new Map(state.highlights.map((h) => [h.id, h]));
+
+          incomingList.forEach((h) => {
+            existingMap.set(h.id, h);
+          });
+
+          return {
+            highlights: Array.from(existingMap.values()),
+          };
+        });
       },
+
+      getAllHighlightIds: () => {
+        const state = get();
+        return state.highlights.map((h) => h.id);
+      },
+
+      getHighlightById: (id) => get().highlights.find((h) => h.id === id),
     }),
 
     {

@@ -1,18 +1,18 @@
+import { getAuth } from 'firebase/auth';
 import {
   collection,
-  getDocs,
-  addDoc,
-  updateDoc,
   deleteDoc,
   doc,
-  serverTimestamp,
   getDoc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
 } from 'firebase/firestore';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { firestoreDatabase } from '@/libs/firebase';
-import toast from 'react-hot-toast';
-import { getAuth } from 'firebase/auth';
 import { useHighlightStore } from '@/store/useHighlightStore';
+import toast from 'react-hot-toast';
 
 const COLLECTION_PATH = (uid) => `users/${uid}/highlights`;
 
@@ -44,25 +44,23 @@ export function useAddHighlight(uid) {
       const currentUid = currentUser?.uid;
 
       if (!currentUid || currentUid !== uid) {
-        throw new Error(
-          '❌ 인증 정보와 UID가 일치하지 않음. Firestore 접근 차단됨'
-        );
+        throw new Error('인증된 사용자와 UID가 일치하지 않습니다.');
       }
 
       const path = COLLECTION_PATH(uid);
-      await addDoc(collection(firestoreDatabase, path), {
+      const highlightRef = doc(firestoreDatabase, path, highlight.id);
+
+      await setDoc(highlightRef, {
         ...highlight,
         createdAt: serverTimestamp(),
       });
     },
-
     onSuccess: () => {
       queryClient.invalidateQueries(['highlights', uid]);
-      toast.success('✅ 하이라이트 저장 완료');
+      toast.success('하이라이트가 저장되었습니다.');
     },
-    onError: (error) => {
-      console.error('❌ 하이라이트 저장 실패:', error);
-      toast.error('하이라이트 저장 실패');
+    onError: () => {
+      toast.error('하이라이트 저장 실패했습니다. 잠시 후 다시 시도해주세요.');
     },
   });
 }
@@ -77,10 +75,12 @@ export function useUpdateHighlight(uid) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['highlights', uid]);
+      toast.success('하이라이트가 수정되었습니다.');
     },
-    onError: (error) => {
-      console.error('❌ 하이라이트 수정 실패:', error);
-      toast.error('하이라이트 수정 실패');
+    onError: () => {
+      toast.error(
+        '하이라이트 업데이트 실패했습니다. 잠시 후 다시 시도해주세요.'
+      );
     },
   });
 }
@@ -93,36 +93,26 @@ export function useDeleteHighlight(uid) {
     mutationFn: async (highlightId) => {
       const docRef = doc(firestoreDatabase, COLLECTION_PATH(uid), highlightId);
 
-      try {
-        await deleteDoc(docRef);
+      await deleteDoc(docRef);
+      const deletedSnap = await getDoc(docRef, { source: 'server' });
 
-        const deletedSnap = await getDoc(docRef, { source: 'server' });
+      if (deletedSnap.exists()) {
+        throw new Error('Firestore 문서가 정상적으로 삭제되지 않았습니다.');
+      }
 
-        if (deletedSnap.exists()) {
-          throw new Error('❌ Firestore 문서 삭제 실패: 여전히 존재함');
-        }
-
-        const cfi = getHighlightCfiById(highlightId);
-        if (cfi && window._globalRendition) {
-          window._globalRendition.annotations.remove(cfi, 'highlight');
-          console.log('🧼 DOM 하이라이트 제거 완료:', cfi);
-        }
-      } catch (err) {
-        console.error('🔥 삭제 처리 중 오류:', err.message);
-        throw err;
+      const cfi = getHighlightCfiById(highlightId);
+      if (cfi && window._globalRendition) {
+        window._globalRendition.annotations.remove(cfi, 'highlight');
       }
     },
-
     onSuccess: (_data, highlightId) => {
       removeHighlight(highlightId);
       queryClient.removeQueries(['highlights', uid]);
       queryClient.invalidateQueries(['highlights', uid]);
-      toast.success('✅ 하이라이트 삭제 완료');
+      toast.success('하이라이트가 삭제되었습니다.');
     },
-
-    onError: (error) => {
-      console.error('❌ 하이라이트 삭제 실패:', error);
-      toast.error(`삭제 실패: ${error.message}`);
+    onError: () => {
+      toast.error('하이라이트 삭제 실패했습니다. 잠시 후 다시 시도해주세요.');
     },
   });
 }
@@ -136,6 +126,7 @@ export function useSaveHighlightMemo() {
 
   const saveMemo = (highlight) => {
     if (!uid) {
+      toast.error('로그인이 필요합니다.');
       throw new Error('로그인 필요');
     }
 

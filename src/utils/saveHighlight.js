@@ -1,26 +1,34 @@
 import { v4 as uuidv4 } from 'uuid';
-import { applyHighlight } from './applyHighlight';
-import { useHighlightStore } from '@/store/useHighlightStore';
-import { useAddHighlight } from '@/hooks/useHighlightSync';
-import { useAuth } from '@/hooks/useAuth';
 import { collection, getDocs } from 'firebase/firestore';
+import { applyHighlight } from '@/utils/applyHighlight';
+import { useHighlightStore } from '@/store/useHighlightStore';
 import { firestoreDatabase } from '@/libs/firebase';
 
 export function useSaveHighlight(rendition) {
-  const { addHighlight } = useHighlightStore();
-  const { user } = useAuth();
-  const addHighlightMutation = useAddHighlight(user?.uid);
+  const store = useHighlightStore();
 
-  const saveHighlight = async ({ cfi, text, color, memo }) => {
+  if (!rendition) return { saveHighlight: null };
+
+  const saveHighlight = async ({ id, cfi, text, color, memo, onClick }) => {
     if (!cfi || !text || !rendition) {
       console.warn('❗ 필수 값 누락: cfi, text, rendition 필요');
       return;
     }
 
-    const id = uuidv4();
+    if (id) {
+      store.updateHighlight(id, { color, memo, synced: false });
+      const updated = store.highlights.find((highlight) => highlight.id === id);
+      await applyHighlight(rendition, updated, onClick);
+      return updated;
+    }
 
-    const localHighlight = {
-      id,
+    const existing = store.highlights.find(
+      (highlight) => highlight.cfi === cfi && highlight.text === text
+    );
+    if (existing) return;
+
+    const newHighlight = {
+      id: uuidv4(),
       cfi,
       text,
       color,
@@ -29,17 +37,9 @@ export function useSaveHighlight(rendition) {
       synced: false,
     };
 
-    addHighlight(localHighlight);
-    await applyHighlight(rendition, localHighlight, null);
-
-    if (user?.uid) {
-      addHighlightMutation.mutate({
-        ...localHighlight,
-        synced: true,
-      });
-    }
-
-    return localHighlight;
+    store.addHighlight(newHighlight);
+    await applyHighlight(rendition, newHighlight, onClick);
+    return newHighlight;
   };
 
   return { saveHighlight };

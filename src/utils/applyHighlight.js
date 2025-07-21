@@ -1,7 +1,3 @@
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export const applyHighlight = async (rendition, highlight, onClick) => {
   const { cfi, id, color } = highlight;
 
@@ -23,6 +19,7 @@ export const applyHighlight = async (rendition, highlight, onClick) => {
     className
   );
 
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   await delay(100);
 
   const contents = rendition.getContents();
@@ -33,8 +30,14 @@ export const applyHighlight = async (rendition, highlight, onClick) => {
     const svgRects = iframe.contentDocument?.querySelectorAll(
       `.${className} rect`
     );
+
     if (!svgRects || svgRects.length === 0) {
-      console.warn('❌ rect 없음, 하지만 하이라이트는 추가됨');
+      console.warn('❌ 하이라이트 시각화 실패', {
+        highlight,
+        cfi,
+        className,
+      });
+
       return;
     }
 
