@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="300" alt="record247 구조 다이어그램" src="/images/record247-logo.png" />
+  <img width="300" alt="record247 구조 다이어그램" src="public/images/record247-logo.png" />
 </p>
 
 **record247**은 사용자의 **텍스트 드래그, 클릭, 메모 입력 등 인터랙션을 빠르고 정확하게 기록**하는  
@@ -77,9 +77,9 @@
 
 | 화면                                                                        | 설명                                                                                               |
 | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| <img src="/images/preview-01-upload.png" width="200px" height="130px" />    | **EPUB 업로드 화면**<br/>EPUB 파일 업로드 후 구조 검사를 통과하면 전자책 뷰어로 이동합니다.        |
-| <img src="/images/preview-02-highlight.png" width="200px" height="130px" /> | **하이라이트 기능**<br/>텍스트 드래그 시 툴팁이 나타나고 중복 없이 하이라이트가 생성됩니다.        |
-| <img src="/images/preview-03-memo.png" width="200px" height="130px" />      | **메모 작성 창**<br/>하이라이트에 메모 버튼을 누르면 선택 텍스트와 함께 내용을 입력할 수 있습니다. |
+| <img src="public/images/preview-01-upload.png" width="200px" height="130px" />    | **EPUB 업로드 화면**<br/>EPUB 파일 업로드 후 구조 검사를 통과하면 전자책 뷰어로 이동합니다.        |
+| <img src="public/images/preview-02-highlight.png" width="200px" height="130px" /> | **하이라이트 기능**<br/>텍스트 드래그 시 툴팁이 나타나고 중복 없이 하이라이트가 생성됩니다.        |
+| <img src="public/images/preview-03-memo.png" width="200px" height="130px" />      | **메모 작성 창**<br/>하이라이트에 메모 버튼을 누르면 선택 텍스트와 함께 내용을 입력할 수 있습니다. |
 
 <br />
 
