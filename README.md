@@ -9,6 +9,20 @@
 
 <br />
 
+<!-- ✅ 다이어그램 앵커 -->
+<a id="flow-overview"></a>
+<p align="center">
+  <img
+    src="https://github.com/user-attachments/assets/cab7faea-1389-475a-a687-f592997e1ca8"
+    alt="record247 핵심 기능 흐름: EPUB 업로드→검증→Storage→Signed URL→epub.js→Zustand→디바운스 동기화"
+    width="900"
+    style="max-width:100%; height:auto;"
+    decoding="async"
+  />
+</p>
+
+<br />
+
 # 목차
 - [기획 의도](#기획-의도)
 - [프리뷰](#프리뷰)
@@ -53,26 +67,54 @@
 
 # 핵심 기능과 흐름
 
+> 전체 구조는 **[상단 다이어그램](#flow-overview)** 을 참고하세요.  
+
+1. **EPUB 업로드 → 클라이언트 1차 검증(JSZip)**  
+   - ZIP 구조 확인: `mimetype === application/epub+zip`, `META-INF/container.xml` 존재  
+   - 실패 시 **오류 피드백**으로 분기
+
+2. **서버 2차 검증(Firebase Functions)**  
+   - `container.xml`에서 `.opf` 경로 추출, `manifest/spine` 등 핵심 요소 검증  
+   - 정상일 때만 파일 저장 단계로 진행
+
+3. **Firebase Storage 저장 → Signed URL 발급**  
+   - 저장 후 **일시적 접근 권한 URL**(Signed URL) 생성 → 클라이언트 전달
+
+4. **epub.js 렌더링(프론트엔드)**  
+   - `ePub(signedUrl).renderTo('viewer')`로 브라우저 내 렌더링 수행
+
+5. **Zustand 로컬 저장 → 5초 디바운스 후 서버 동기화(Firestore)**  
+   - 즉시 로컬 저장(`synced=false`)으로 UI 반응성 유지  
+   - **추가 변경 없이 5초 경과 시** 배치 저장(디바운스) → `synced=true`
+
+<br />
+
+<!-- 필요 시: 상세 설명 접기 -->
+<details>
+<summary>자세히 보기</summary>
+
 **EPUB**은 다양한 디지털 기기에서 쉽게 읽을 수 있도록 설계된 전자책 파일 형식으로, 텍스트, 이미지, 스타일(HTML/CSS), 메타데이터 등을 포함하며 전자책 리더 소프트웨어나 하드웨어에서 사용됩니다.
 
 사용자는 직접 `.epub` 전자책 파일을 업로드하고, 브라우저에서 바로 읽을 수 있습니다.
 이 핵심 기능은 다음과 같은 흐름으로 작동합니다:
 
-1. **파일 업로드**
+1. **파일 업로드**  
    사용자가 EPUB 파일을 업로드
-2. **서버 유효성 검사 및 저장**
+2. **서버 유효성 검사 및 저장**  
    Firebase Functions에서 파일을 ZIP으로 해석한 뒤,
-   `mimetype`, `container.xml`, `content.opf` 등 핵심 구조를 검사
+   `mimetype`, `container.xml`, `content.opf` 등 핵심 구조를 검사  
    유효한 경우 Firebase Storage에 저장
-3. **Signed URL 발급**
+3. **Signed URL 발급**  
    저장된 파일에 대해 일정 시간 동안 유효한 **서명된 접근 URL**을 생성해
    클라이언트에 전달합니다.
-4. **epub.js로 렌더링**
+4. **epub.js로 렌더링**  
    클라이언트는 전달받은 URL을 `epub.js`에 전달해
    브라우저 내에서 전자책을 렌더링
-5. **읽기 위치 및 메모 저장**
+5. **읽기 위치 및 메모 저장**  
    사용자의 독서 위치(CFI)와 하이라이트, 메모는 로컬에 즉시 저장되며,
    이후 주기적으로 서버와 동기화
+
+</details>
 
 <br />
 
